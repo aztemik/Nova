@@ -1,0 +1,122 @@
+# NOVA — Personajes (nodos)
+
+> Parte de la especificación de **NOVA**. Documento maestro: [NOVA_GameDesign_Spec.md](./NOVA_GameDesign_Spec.md).
+> Corresponde a la **sección 4** del maestro; la numeración `4.x` se conserva.
+>
+> **Ver también:** estados y animaciones de cada nodo en [NOVA_Estados_Animaciones.md](./NOVA_Estados_Animaciones.md) · arte requerido por nodo y nivel en [NOVA_Assets_Diseno.md](./NOVA_Assets_Diseno.md) · reglas de envío e impacto en las secciones [5](./NOVA_GameDesign_Spec.md#5-economía-la-energía) y [6](./NOVA_GameDesign_Spec.md#6-protones-y-resolución-de-impacto) del maestro · poderes del Púlsar en la [sección 7](./NOVA_GameDesign_Spec.md#7-poderes-del-púlsar) · reconversión en la [sección 8](./NOVA_GameDesign_Spec.md#8-reconversión).
+
+---
+
+## 4. Personajes (nodos)
+
+### 4.0 Tabla comparativa
+
+| | Asteroide | Estrella | Púlsar | Magnetar |
+|---|---|---|---|---|
+| Nivel | 0 | 1–5 | 1–3 | 1–5 |
+| Tope de Energía | 10 (Materia Inerte) | 50 | 100 | 100 |
+| Genera Energía | No | **Sí, único** | No | No |
+| Envía Energía | No | Sí | Sí | Sí |
+| Dispara | No | No | No | Sí |
+| Lanza poderes | No | No | Sí | No |
+| Resistencia a captura | ×1 | ×1 | ×1 | **×2** |
+| Cuenta en barra de poder | No | Sí | Sí | Sí |
+
+### 4.1 Asteroide (nivel 0)
+
+Roca muerta. Es el estado inicial de todo nodo conquistable y la única fuente de nodos nuevos.
+
+- **Tope:** 10 de Materia Inerte. Un Asteroide neutral siempre está a 10; no regenera porque nunca baja salvo bajo ataque.
+- **Captura:** se le restan 10 puntos de Carga. Al llegar a 0 pasa al bando del atacante, sigue siendo nivel 0, y su Energía queda en 0 con tope de 10.
+- **Encendido:** un Asteroide propio con **10 de Energía** puede encenderse. El jugador elige Estrella, Púlsar o Magnetar en un menú radial. Consume los 10 y el nodo pasa a **nivel 1 del tipo elegido con 0 de Energía**.
+- **No hace nada más.** No genera, no dispara, no puede enviar energía. Un Asteroide propio sin encender es capital muerto.
+- **Animación:** `zzz` flotante mientras es Neutral. Un Asteroide propio sin encender muestra un icono parpadeante de "encender" en lugar de `zzz`. Detalle en [14.1](./NOVA_Estados_Animaciones.md#141-estados-del-nodo).
+
+> **Diseño:** el doble coste (10 para capturar + 10 para encender) es intencional. Obliga a que expandirse tenga un precio real y hace que la primera Estrella sea la decisión más importante de la partida.
+
+### 4.2 Estrella
+
+Único generador de Energía del juego. Sin Estrellas, un bando está condenado.
+
+- **Tope:** 50.
+- **Genera** Energía de forma continua hasta su tope. Al llegar al tope se detiene (no desperdicia, simplemente no acumula).
+- **Envía** Energía a cualquier nodo.
+- **No dispara ni lanza poderes.**
+- 5 niveles. Cada nivel acelera la generación.
+
+| Nivel | Coste de mejora | Intervalo | Energía/s | Tiempo 0→50 |
+|---|---|---|---|---|
+| 1 | 10 (encendido) | 2.00 s | 0.50 | 100 s |
+| 2 | 20 | 1.60 s | 0.63 | 80 s |
+| 3 | 30 | 1.30 s | 0.77 | 65 s |
+| 4 | 40 | 1.05 s | 0.95 | 53 s |
+| 5 | 50 | 0.85 s | 1.18 | 43 s |
+
+La generación es discreta: suma **+1 de Energía** cada `Intervalo`. Nunca fracciones. Esto evita desincronía entre el número visible y el valor real.
+
+### 4.3 Púlsar
+
+Lanzador de poderes. No genera Energía, pero la almacena y la usa como munición táctica.
+
+- **Tope:** 100.
+- **Envía** Energía a cualquier nodo, igual que la Estrella.
+- **Carga y lanza** un poder a la vez (ver [sección 7](./NOVA_GameDesign_Spec.md#7-poderes-del-púlsar)).
+- 3 niveles. Cada nivel desbloquea un poder. El nivel no altera velocidad de carga ni alcance.
+
+| Nivel | Coste de mejora | Poder desbloqueado |
+|---|---|---|
+| 1 | 10 (encendido) | Cero Absoluto |
+| 2 | 25 | Decaimiento |
+| 3 | 40 | Agujero de Gusano |
+
+Un Púlsar de nivel 3 conserva el acceso a los tres poderes, pero solo puede tener **uno cargado a la vez**.
+
+### 4.4 Magnetar
+
+Defensa de área. Derriba protones en tránsito.
+
+- **Tope:** 100.
+- **Envía** Energía a cualquier nodo (decisión del jugador quedarse vulnerable al hacerlo).
+- **Dispara** a los protones que entran en su radio. Cada disparo resta **2 puntos de Carga** al protón. Si la Carga llega a 0, el protón desaparece y esa Energía se pierde del juego: no vuelve al emisor ni llega al destino.
+- **Resistencia ×2:** cada punto de Carga que impacta sobre un Magnetar le resta solo **0.5** de Energía. Capturar un Magnetar con 50 de Energía requiere 100 de Carga efectiva.
+- 5 niveles. Cada nivel mejora radio y cadencia.
+
+| Nivel | Coste de mejora | Radio (u) | Cadencia (disp/s) | Carga media anulada* |
+|---|---|---|---|---|
+| 1 | 10 (encendido) | 2.0 | 1.0 | ~3 |
+| 2 | 20 | 2.4 | 1.4 | ~5 |
+| 3 | 30 | 2.8 | 1.9 | ~9 |
+| 4 | 40 | 3.2 | 2.5 | ~13 |
+| 5 | 50 | 3.6 | 3.2 | ~18 |
+
+\* Estimación para un protón que cruza el diámetro completo a velocidad 2.5 u/s. Es orientativa, no un valor implementado.
+
+**Selección de objetivo:** el Magnetar dispara siempre al protón hostil **más cercano a su propio centro**. Si hay empate, al que lleve más Carga. Un solo disparo afecta a un solo protón (sin daño en área).
+
+**A quién dispara, según su bando:**
+
+| Magnetar es de... | Dispara a protones de... |
+|---|---|
+| **Neutral** | Jugador **y** Enemigo |
+| **Jugador** | Enemigo |
+| **Enemigo** | Jugador |
+
+Un Magnetar nunca dispara a protones de su propia facción, ni siquiera si el protón va dirigido a un enemigo.
+
+---
+
+
+---
+
+## 4.5 Resumen de dependencias de arte
+
+Cada tipo y nivel necesita su propio sprite. El inventario completo, con IDs y nombres de archivo, está en [NOVA_Assets_Diseno.md](./NOVA_Assets_Diseno.md).
+
+| Tipo | Variantes de sprite (nivel × facción) | ID de asset |
+|---|---|---|
+| Asteroide | 1 nivel × 3 facciones = 3 | `ART-NOD-AST-*` |
+| Estrella | 5 × 2 = 10 | `ART-NOD-STR-*` |
+| Púlsar | 3 × 2 = 6 | `ART-NOD-PUL-*` |
+| Magnetar | 5 × 3 = 15 (incluye Neutral, ver 3.2) | `ART-NOD-MAG-*` |
+
+**Total: 34 sprites base de nodo**, sin contar frames de animación.
